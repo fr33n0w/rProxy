@@ -2,12 +2,15 @@
 Reticulum HTTP/HTTPS Proxy Server & WebUI Client/Browser
 
 ---
+<img width="1920" height="1080" alt="immagine" src="https://github.com/user-attachments/assets/bbe28070-e429-4308-b018-7c4e3ded8a7c" />
 
 **rProxy** is a decentralized HTTP proxy system built on the [Reticulum Network Stack](https://reticulum.network/). 
 
 Proxy nodes announce themselves over the mesh network with a custom announce (not visible on the lxmf peer list; only the client will see it!) 
 
 Clients discover them automatically, pick an exit node, and browse the web through it, all routed over Reticulum.
+
+In the above screenshoot you can see the webclient in action, connected to an exit node (a proxy server peer), visiting https://rmap.world .
 
 ---
 
@@ -35,14 +38,14 @@ Working scheme:
 
 ### Client WebApp (`rproxy_client_webapp.py`)
 - Flask web UI accessible at `http://127.0.0.1:8585`
-- Listens **only** for `rproxy.service` announces — ignores all other RNS traffic
+- Listens **only** for `rproxy.service` announces - ignores all other RNS traffic
 - **Proxy registry** with persistent storage (`rproxy_known_proxies.json`)
   - Nodes loaded on startup, no need to wait for the next announce
   - Deleted manually with the trash button; never auto-removed
-- **Background liveness pinger** — checks all known proxies periodically for online/offline state
-- **Favorite proxies** (⭐) — starred nodes always shown at the top
-- **Bookmark bar** — save URLs with auto-title detection, chips for quick access, full dropdown panel with rename/delete
-- **Debug endpoint** at `/api/debug` — inspect raw registry state
+- **Background liveness pinger** - checks all known proxies periodically for online/offline state
+- **Favorite proxies** (⭐) - starred nodes always shown at the top
+- **Bookmark bar** - save URLs with auto-title detection, chips for quick access, full dropdown panel with rename/delete
+- **Debug endpoint** at `/api/debug` - inspect raw registry state
 
 ### Browser UI
 - Dark-themed single-page app
@@ -52,11 +55,26 @@ Working scheme:
 - **Response tabs**: Body (JSON pretty-print), Headers, Raw JSON, **Preview**
 - **Preview tab** (HTML responses):
   - Renders page in sandboxed `<iframe>` with injected `<base href>` for correct relative URL resolution
-  - **Intercepts all link clicks and form submissions** — navigation stays inside the proxy
+  - **Intercepts all link clicks and form submissions** - navigation stays inside the proxy
   - **Back / Forward** history navigation
   - Mini toolbar with reload and URL display
   - Auto-selected when response is HTML
-- **Bookmark bar** — click any saved URL to load it immediately through the proxy
+- **Bookmark bar** - click any saved URL to load it immediately through the proxy
+
+---
+
+## Use case / examples:
+
+<img width="2813" height="1313" alt="597234664-38f79071-7eed-434e-927b-f6d9133c3405" src="https://github.com/user-attachments/assets/23c166f1-046f-4779-82ec-adc03680a9c1" />
+
+
+### Place a rProxy Server on a remote machine, launch the client locally, wait for the exit node to be announced, explore the web through Reticulum.
+
+#### NOTE: at this first stage of development, the proxy node will appear on all the worldwide connected clients, so be careful on what you do and where you host the server.
+
+The remote machine (the one with the proxy running) will leak its IP into the destination website (if not using an extra upstream http proxy).
+
+**The client is the only hidden and protected device!**
 
 ---
 
