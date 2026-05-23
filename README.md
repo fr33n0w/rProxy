@@ -1,9 +1,20 @@
-# rProxy — Reticulum HTTP Proxy
+# rProxy - v0.1 (Initial Release)
+Reticulum HTTP/HTTPS Proxy Server & WebUI Client/Browser
 
-**rProxy** is a decentralized HTTP proxy system built on the [Reticulum Network Stack](https://reticulum.network/). Proxy nodes announce themselves over the mesh network; clients discover them automatically, pick an exit node, and browse the web through it — all routed over Reticulum.
+---
+
+**rProxy** is a decentralized HTTP proxy system built on the [Reticulum Network Stack](https://reticulum.network/). 
+
+Proxy nodes announce themselves over the mesh network with a custom announce (not visible on the lxmf peer list; only the client will see it!) 
+
+Clients discover them automatically, pick an exit node, and browse the web through it, all routed over Reticulum.
+
+---
 
 ```
-[Browser / WebApp]  ──RNS Link──►  [rProxy Server]  ──HTTP/HTTPS──►  [Internet]
+Working scheme:
+
+[Browser / WebApp]  -- RNS Link --►  [rProxy Server]  --HTTP/HTTPS--►  [Internet]
      Client                            Exit Node
 ```
 
@@ -13,10 +24,10 @@
 
 ### Server (`rproxy_server.py`)
 - Announces itself on the Reticulum network with a unique aspect (`rproxy.service`)
-- Auto-generated display name from hash suffix — `rProxy-a1c2d5`
+- Auto-generated display name from hash suffix - `rProxy-a1c2d5`
 - Configurable announce interval
 - Forwards HTTP/HTTPS requests received via RNS link
-- Auto-detects response charset from `Content-Type` header (no more base64 blobs)
+- Auto-detects response charset from `Content-Type` header
 - gzip / deflate / brotli decompression via `decode_content=True`
 - Configurable allowed methods, request timeout, max response size
 - Optional SSL verification bypass (`verify_ssl = false`) for Windows environments
@@ -28,15 +39,15 @@
 - **Proxy registry** with persistent storage (`rproxy_known_proxies.json`)
   - Nodes loaded on startup, no need to wait for the next announce
   - Deleted manually with the trash button; never auto-removed
-- **Background liveness pinger** — checks all known proxies periodically
+- **Background liveness pinger** — checks all known proxies periodically for online/offline state
 - **Favorite proxies** (⭐) — starred nodes always shown at the top
 - **Bookmark bar** — save URLs with auto-title detection, chips for quick access, full dropdown panel with rename/delete
 - **Debug endpoint** at `/api/debug` — inspect raw registry state
 
 ### Browser UI
 - Dark-themed single-page app
-- **Exit Nodes sidebar** — live status dots (online/offline/checking), full hash display, announce count, last ping time
-- **Request builder** — method selector, URL bar, custom JSON headers
+- **Exit Nodes sidebar** - live status dots (online/offline/checking), full hash display, announce count, last ping time
+- **Request builder** - method selector, URL bar, custom JSON headers
 - **Auto-scheme**: type `example.com`, get `https://` first, fallback to `http://` automatically
 - **Response tabs**: Body (JSON pretty-print), Headers, Raw JSON, **Preview**
 - **Preview tab** (HTML responses):
@@ -49,7 +60,7 @@
 
 ---
 
-## Files
+## Files structure:
 
 ```
 rProxy/
@@ -73,7 +84,7 @@ rProxy/
 pip install rns requests flask
 ```
 
-Python 3.10+ recommended. Reticulum must be configured and running (at least one interface).
+Python 3.10+ recommended. Reticulum must be configured and running (at least one interface connected).
 
 ---
 
@@ -81,6 +92,8 @@ Python 3.10+ recommended. Reticulum must be configured and running (at least one
 
 ```bash
 python rproxy_server.py --config rproxy_server.ini
+or just:
+python rproxy_server.py
 ```
 
 First run creates a persistent identity file (`rproxy_server.id`) and announces immediately:
@@ -95,7 +108,7 @@ First run creates a persistent identity file (`rproxy_server.id`) and announces 
 
 **Windows SSL note:** if you get `CERTIFICATE_VERIFY_FAILED`, add this to `rproxy_server.ini`:
 ```ini
-verify_ssl = false
+verify_ssl = false (set by default, edit if needed)
 ```
 
 ---
@@ -104,6 +117,8 @@ verify_ssl = false
 
 ```bash
 python rproxy_client_webapp.py --config rproxy_client.ini
+or just:
+python rproxy_client_webapp.py
 ```
 
 Open your browser at **`http://127.0.0.1:8585`**
@@ -186,7 +201,7 @@ Client                          Reticulum Network              Server
   └─ Render in Preview iframe                                     │
 ```
 
-- The **announce** carries the display name as `app_data` — the client reads it without establishing a connection
+- The **announce** carries the display name as `app_data` - the client reads it without establishing a connection
 - **RNS links** are cached and reused for subsequent requests to the same node
 - The **interceptor script** injected into preview pages catches all clicks/submits and sends them back to the parent window via `postMessage`, keeping all navigation inside the proxy
 
@@ -214,8 +229,10 @@ The client webapp exposes a simple REST API:
 
 ## Limitations
 
+This script is just a working proof of concept on what can be done using the Reticulum APIs.
+
 - Sites with `X-Frame-Options: SAMEORIGIN` or `Content-Security-Policy: frame-ancestors` will refuse to render in the preview iframe (e.g. Google, Facebook). This is enforced by the browser and cannot be bypassed client-side.
-- Binary responses (images, PDFs, downloads) are not yet handled as files — only HTML and text content is rendered usefully.
+- Binary responses (images, PDFs, downloads) are not yet handled as files - only HTML and text content is rendered usefully.
 - POST forms work but multipart file uploads are not supported.
 - RNS link MTU limits apply — very large responses are truncated at `max_response_size`.
 
