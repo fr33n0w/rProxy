@@ -155,7 +155,7 @@ Open your browser at **`http://127.0.0.1:8585`**
 1. Wait for proxy nodes to appear in the **Exit Nodes** sidebar (or they load instantly from saved list)
 2. Click a node to select it as your exit point
 3. Type a URL in the request bar and press **Send** or **Enter**
-4. HTML pages open in the **Preview** tab — click links to navigate through the proxy
+4. HTML pages open in the **Preview** tab - click links to navigate through the proxy
 
 ---
 
@@ -204,19 +204,19 @@ debug = false
 
 ```
 Client                          Reticulum Network              Server
-  │                                                               │
+  │                                                             │
   │  ← Announce (rproxy.service, display_name, hash) ────────── │
-  │                                                               │
-  │  ── RNS Link establishment ──────────────────────────────► │
-  │                                                               │
-  │  ── /fetch  {method, url, headers} ──────────────────────► │
+  │                                                             │
+  │  ── RNS Link establishment ──────────────────────────────►  │
+  │                                                             │
+  │  ── /fetch  {method, url, headers} ──────────────────────►  │
   │                                   ┌─────────────────────────┘
   │                                   │  HTTP/HTTPS request to internet
   │                                   │  ← response
   │                                   └─────────────────────────┐
   │  ◄─ {status, headers, body, url} ────────────────────────── │
-  │                                                               │
-  └─ Render in Preview iframe                                     │
+  │                                                             │
+  └─ Render in Preview iframe                                   │
 ```
 
 - The **announce** carries the display name as `app_data` - the client reads it without establishing a connection
