@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>rProxy Client</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0f1117;--bg1:#161b27;--bg2:#1e2535;--bg3:#263044;
+  --border:#2e3a50;--accent:#4e8ef7;--accent2:#38bdf8;
+  --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+}
+html,body{height:100%;background:var(--bg0);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5}
+.app{display:grid;grid-template-rows:52px 1fr;grid-template-columns:280px 1fr;height:100vh;overflow:hidden}
+header{grid-column:1/-1;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 18px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px}
+.logo i{color:var(--accent);font-size:18px}
+.logo span{color:var(--accent2)}
+.identity{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.identity .hash{color:var(--text)}
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-head{padding:10px 12px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sidebar-head h2{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;flex:1}
+.btn-icon{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:5px;font-size:13px;transition:color .15s,background .15s}
+.btn-icon:hover{color:var(--text);background:var(--bg3)}
+.btn-icon:disabled{opacity:.35;cursor:not-allowed}
+.proxy-list{flex:1;overflow-y:auto;padding:6px 8px}
+.proxy-list::-webkit-scrollbar{width:4px}
+.proxy-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.proxy-item{padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:background .12s,border-color .12s}
+.proxy-item:hover{background:var(--bg2);border-color:var(--border)}
+.proxy-item.selected{background:var(--bg3);border-color:var(--accent)}
+.pname{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-weight:600;font-size:13px}
+.pname-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phash{font-family:var(--mono);font-size:10px;color:var(--muted);word-break:break-all;margin-bottom:4px}
+.pactions{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.pmeta{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;flex:1;flex-wrap:wrap}
+.pbtns{display:flex;gap:2px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.proxy-item:hover .pbtns{opacity:1}
+.pbtns .btn-icon{padding:3px 5px;font-size:11px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-online{background:var(--success);animation:pulse 2.5s infinite}
+.dot-offline{background:var(--danger)}
+.dot-unknown{background:var(--muted);animation:pulse 3s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.slbl{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0}
+.s-online{background:rgba(34,197,94,.15);color:var(--success)}
+.s-offline{background:rgba(239,68,68,.15);color:var(--danger)}
+.s-unknown{background:rgba(100,116,139,.15);color:var(--muted)}
+.star-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px 3px;color:var(--muted);transition:color .15s,transform .15s;flex-shrink:0;line-height:1}
+.star-btn:hover{transform:scale(1.2)}
+.star-btn.starred{color:#f59e0b}
+.empty-list{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;line-height:1.8}
+.empty-list i{font-size:28px;display:block;margin-bottom:10px}
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg0)}
+.req-panel{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg1)}
+.req-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px}
+.req-row{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
+.req-row:last-child{margin-bottom:0}
+select,input[type=text],textarea{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+input[type=text]{flex:1}
+.method-sel{font-family:var(--mono);font-weight:700;font-size:12px;width:82px}
+.proxy-badge{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:12px;font-family:var(--mono);color:var(--accent2);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.proxy-badge.none{color:var(--warn);border-style:dashed}
+.proxy-badge i{color:var(--muted)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;padding:8px 16px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:filter .15s,opacity .15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.hdr-toggle{font-size:12px;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px}
+.hdr-toggle:hover{color:var(--text)}
+.hdr-area{display:none}
+.hdr-area.open{display:block}
+textarea{width:100%;resize:vertical;min-height:60px;font-family:var(--mono);font-size:12px}
+.bk-bar{display:flex;align-items:center;gap:6px;padding:5px 18px;background:var(--bg1);border-bottom:1px solid var(--border);position:relative}
+.bk-save-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;padding:4px 9px;font-size:11px;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.bk-save-btn:hover{color:var(--accent);border-color:var(--accent)}
+.bk-save-btn.saved{color:var(--success);border-color:var(--success)}
+.bk-chips{display:flex;gap:5px;flex:1;overflow:hidden}
+.bk-chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;transition:border-color .12s;flex-shrink:0}
+.bk-chip:hover{border-color:var(--accent)}
+.bk-chip-del{color:var(--muted);font-size:10px;flex-shrink:0}
+.bk-chip-del:hover{color:var(--danger)}
+.bk-more{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0;display:none;transition:all .15s}
+.bk-more:hover{color:var(--text);border-color:var(--accent)}
+.bk-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg1);border:1px solid var(--border);border-radius:10px;z-index:200;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:320px;overflow-y:auto;display:none}
+.bk-dd.open{display:block}
+.bk-dd::-webkit-scrollbar{width:4px}
+.bk-dd::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.bk-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer;transition:background .12s}
+.bk-row:hover{background:var(--bg2)}
+.bk-row-title{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-row-url{font-size:10px;color:var(--muted);font-family:var(--mono);flex:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-row-acts{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .12s}
+.bk-row:hover .bk-row-acts{opacity:1}
+.bk-dd-empty{text-align:center;padding:20px;color:var(--muted);font-size:12px}
+.res-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.res-head{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg1)}
+.res-head h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.res-status{padding:2px 9px;border-radius:20px;font-weight:700;font-size:12px;font-family:var(--mono)}
+.s2xx{background:rgba(34,197,94,.15);color:var(--success)}
+.s3xx{background:rgba(96,165,250,.15);color:#60a5fa}
+.s4xx{background:rgba(245,158,11,.15);color:var(--warn)}
+.s5xx,.serr{background:rgba(239,68,68,.15);color:var(--danger)}
+.res-meta{margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono);display:flex;align-items:center;gap:12px}
+.tabs{display:flex;gap:1px;padding:8px 18px 0;background:var(--bg1);border-bottom:1px solid var(--border)}
+.tab{padding:6px 14px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:color .12s,border-color .12s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text)}
+.res-body{flex:1;overflow:auto;padding:14px 18px}
+.res-body::-webkit-scrollbar{width:5px}
+.res-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+pre{font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-all;color:var(--text)}
+.hdr-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.hdr-table td{padding:4px 10px;border-bottom:1px solid var(--border)}
+.hdr-table td:first-child{color:var(--accent2);width:35%}
+.hdr-table tr:hover td{background:var(--bg2)}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:10px}
+.placeholder i{font-size:36px}
+.placeholder p{font-size:13px}
+.trunc-warn{background:rgba(245,158,11,.1);border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:6px 12px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.pv-toolbar{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.pv-url{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-family:var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+.pv-frame{width:100%;flex:1;border:none;background:#fff}
+.pv-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100%}
+.loader{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.loader.on{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo"><i class="fa-solid fa-network-wired"></i>r<span>Proxy</span> Client</div>
+  <div class="identity"><i class="fa-solid fa-fingerprint"></i><span>Client identity:</span><span class="hash" id="client-hash">loading…</span></div>
+</header>
+
+<aside class="sidebar">
+  <div class="sidebar-head">
+    <h2><i class="fa-solid fa-circle" style="color:var(--success);font-size:7px;margin-right:3px"></i>Exit Nodes</h2>
+    <button class="btn-icon" title="Refresh" onclick="loadProxies()"><i class="fa-solid fa-rotate-right" id="refresh-icon"></i></button>
+  </div>
+  <div class="proxy-list" id="proxy-list">
+    <div class="empty-list"><i class="fa-solid fa-satellite-dish"></i>Scanning for rProxy nodes…<br><small>Announces appear automatically</small></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="req-panel">
+    <h3><i class="fa-solid fa-paper-plane"></i>&nbsp; Request</h3>
+    <div class="req-row">
+      <div class="proxy-badge none" id="proxy-badge">
+        <i class="fa-solid fa-server"></i><span id="proxy-badge-text">No proxy selected</span>
+      </div>
+    </div>
+    <div class="req-row">
+      <select class="method-sel" id="method">
+        <option>GET</option><option>POST</option><option>HEAD</option><option>PUT</option><option>DELETE</option>
+      </select>
+      <input type="text" id="url-input" placeholder="https://example.com/…"/>
+      <button class="btn" id="send-btn" onclick="sendRequest()" disabled>
+        <span class="loader" id="loader"></span>
+        <i class="fa-solid fa-bolt" id="send-icon"></i>Send
+      </button>
+    </div>
+    <div class="req-row" style="flex-direction:column;gap:5px">
+      <div class="hdr-toggle" onclick="toggleHdr()">
+        <i class="fa-solid fa-chevron-right" id="hdr-arrow"></i>Custom headers (JSON)
+      </div>
+      <div class="hdr-area" id="hdr-area">
+        <textarea id="custom-headers" placeholder='{"Authorization":"Bearer …"}'></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="bk-bar" id="bk-bar">
+    <button class="bk-save-btn" id="bk-save-btn" onclick="toggleBookmark()">
+      <i class="fa-regular fa-bookmark" id="bk-save-icon"></i><span id="bk-save-label">Save</span>
+    </button>
+    <div class="bk-chips" id="bk-chips"></div>
+    <button class="bk-more" id="bk-more" onclick="toggleBkDd()"><i class="fa-solid fa-ellipsis"></i></button>
+    <div class="bk-dd" id="bk-dd">
+      <div class="bk-dd-empty" id="bk-dd-empty"><i class="fa-regular fa-bookmark" style="display:block;font-size:20px;margin-bottom:6px"></i>No bookmarks yet</div>
+    </div>
+  </div>
+
+  <div class="res-panel">
+    <div class="res-head">
+      <h3><i class="fa-solid fa-reply"></i>&nbsp; Response</h3>
+      <span id="res-status"></span>
+      <div class="res-meta" id="res-meta"></div>
+    </div>
+    <div class="tabs" id="tabs" style="display:none">
+      <div class="tab active" onclick="showTab('body')">Body</div>
+      <div class="tab" onclick="showTab('headers')">Headers</div>
+      <div class="tab" onclick="showTab('raw')">Raw JSON</div>
+      <div class="tab" id="tab-preview" style="display:none" onclick="showTab('preview')"><i class="fa-solid fa-eye"></i> Preview</div>
+    </div>
+    <div class="res-body" id="res-body">
+      <div class="placeholder"><i class="fa-solid fa-route"></i><p>Select a proxy node, enter a URL and hit Send</p></div>
+    </div>
+  </div>
+</main>
+</div>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+var selectedProxy = null;
+var lastResponse  = null;
+var currentTab    = 'body';
+var bkAll         = [];
+var pvHistory     = [];
+var pvIdx         = -1;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  loadIdentity();
+  loadProxies();
+  loadBookmarks();
+  setInterval(loadProxies, 10000);
+  document.getElementById('url-input').addEventListener('keydown', function(e){ if(e.key==='Enter') sendRequest(); });
+  document.getElementById('url-input').addEventListener('input', updateBkSaveBtn);
+  document.addEventListener('click', function(e) {
+    var bar = document.getElementById('bk-bar');
+    if (bar && !bar.contains(e.target)) document.getElementById('bk-dd').classList.remove('open');
+  });
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'rproxy-nav') pvNavigate(e.data.url, e.data.method, e.data.body);
+  });
+});
+
+// ── Identity ─────────────────────────────────────────────────────────────────
+async function loadIdentity() {
+  try {
+    var d = await fetch('/api/identity').then(function(r){ return r.json(); });
+    document.getElementById('client-hash').textContent = d.hash;
+  } catch(e) { console.error('identity:', e); }
+}
+
+// ── Proxy list ────────────────────────────────────────────────────────────────
+async function loadProxies() {
+  var icon = document.getElementById('refresh-icon');
+  icon.classList.add('fa-spin');
+  try {
+    var d = await fetch('/api/proxies').then(function(r){ return r.json(); });
+    if (d.error) console.error('api_proxies error:', d.error);
+    renderProxies(d.proxies || []);
+  } catch(e) {
+    console.error('loadProxies:', e);
+    document.getElementById('proxy-list').innerHTML =
+      '<div class="empty-list" style="color:var(--danger)"><i class="fa-solid fa-bug"></i>UI Error:<br><small>' + String(e) + '</small></div>';
+  }
+  setTimeout(function(){ icon.classList.remove('fa-spin'); }, 500);
+}
+
+function renderProxies(proxies) {
+  var list = document.getElementById('proxy-list');
+  if (!proxies.length) {
+    list.innerHTML = '<div class="empty-list"><i class="fa-solid fa-satellite-dish"></i>No rProxy nodes found yet.<br><small>Start a proxy server on the network.</small></div>';
+    return;
+  }
+  proxies.sort(function(a,b){ return (b.favorite?1:0)-(a.favorite?1:0); });
+  list.innerHTML = '';
+  proxies.forEach(function(p) {
+    var sel  = selectedProxy && selectedProxy.hash === p.hash;
+    var ago  = timeAgo(p.last_seen);
+    var pAgo = p.last_ping ? timeAgo(p.last_ping) : 'never';
+    var dotC = p.status==='online' ? 'dot-online' : p.status==='offline' ? 'dot-offline' : 'dot-unknown';
+    var sLbl = p.status==='online' ? 'online' : p.status==='offline' ? 'offline' : 'checking';
+    var sCls = 's-' + (p.status||'unknown');
+    var starC = p.favorite ? 'star-btn starred' : 'star-btn';
+    var starI = p.favorite ? 'fa-solid fa-star' : 'fa-regular fa-star';
+    var hash = p.hash;
+
+    var div = document.createElement('div');
+    div.className = 'proxy-item' + (sel ? ' selected' : '');
+    div.dataset.hash = hash;
+    div.innerHTML =
+      '<div class="pname">' +
+        '<span class="dot ' + dotC + '"></span>' +
+        '<i class="fa-solid fa-server" style="color:var(--accent);font-size:11px"></i>' +
+        '<span class="pname-text">' + esc(p.display_name) + '</span>' +
+        '<span class="slbl ' + sCls + '">' + sLbl + '</span>' +
+        '<button class="' + starC + '" onclick="starProxy(event,\'' + hash + '\')">' +
+          '<i class="' + starI + '"></i></button>' +
+      '</div>' +
+      '<div class="phash">' + esc(hash) + '</div>' +
+      '<div class="pactions">' +
+        '<div class="pmeta">' +
+          '<i class="fa-regular fa-clock"></i>' + ago +
+          '&nbsp;·&nbsp;<i class="fa-solid fa-bullhorn"></i>&times;' + (p.announce_count||0) +
+          '&nbsp;·&nbsp;<i class="fa-solid fa-wave-square"></i>' + pAgo +
+        '</div>' +
+        '<div class="pbtns">' +
+          '<button class="btn-icon" title="Ping" onclick="pingProxy(event,\'' + hash + '\',this)">' +
+            '<i class="fa-solid fa-stethoscope"></i></button>' +
+          '<button class="btn-icon" title="Remove" onclick="removeProxy(event,\'' + hash + '\')">' +
+            '<i class="fa-solid fa-trash" style="color:var(--danger)"></i></button>' +
+        '</div>' +
+      '</div>';
+    div.addEventListener('click', function(){ selectProxy(p); });
+    list.appendChild(div);
+  });
+}
+
+function selectProxy(p) {
+  selectedProxy = p;
+  document.querySelectorAll('.proxy-item').forEach(function(el){
+    el.classList.toggle('selected', el.dataset.hash === p.hash);
+  });
+  var badge = document.getElementById('proxy-badge');
+  badge.className = 'proxy-badge';
+  badge.innerHTML = '<i class="fa-solid fa-server"></i> ' + esc(p.display_name) +
+    ' <small style="color:var(--muted);font-size:10px">' + p.hash.slice(-12) + '</small>';
+  document.getElementById('send-btn').disabled = false;
+}
+
+async function removeProxy(e, hash) {
+  e.stopPropagation();
+  await fetch('/api/proxies/' + hash, {method:'DELETE'});
+  if (selectedProxy && selectedProxy.hash === hash) {
+    selectedProxy = null;
+    var badge = document.getElementById('proxy-badge');
+    badge.className = 'proxy-badge none';
+    badge.innerHTML = '<i class="fa-solid fa-server"></i><span id="proxy-badge-text">No proxy selected</span>';
+    document.getElementById('send-btn').disabled = true;
+  }
+  loadProxies();
+}
+
+async function starProxy(e, hash) {
+  e.stopPropagation();
+  try { await fetch('/api/proxies/' + hash + '/favorite', {method:'POST'}); loadProxies(); }
+  catch(err) { console.error(err); }
+}
+
+async function pingProxy(e, hash, btn) {
+  e.stopPropagation();
+  var i = btn.querySelector('i');
+  i.className = 'fa-solid fa-spinner fa-spin';
+  btn.disabled = true;
+  try { await fetch('/api/ping/' + hash, {method:'POST'}); } catch(_){}
+  i.className = 'fa-solid fa-stethoscope';
+  btn.disabled = false;
+  loadProxies();
+}
+
+// ── Request ───────────────────────────────────────────────────────────────────
+async function sendRequest() {
+  var url = document.getElementById('url-input').value.trim();
+  if (!url) { document.getElementById('url-input').focus(); return; }
+  if (!url.match(/^https?:\/\//i)) { url = 'https://' + url; document.getElementById('url-input').value = url; }
+  var method = document.getElementById('method').value;
+  var headers = {};
+  var rawH = document.getElementById('custom-headers').value.trim();
+  if (rawH) { try { headers = JSON.parse(rawH); } catch(e) { showErr('Invalid JSON headers: ' + e.message); return; } }
+  pvPush(url, method, null);
+  await doFetch(url, method, null, headers);
+}
+
+async function doFetch(url, method, body, headers) {
+  if (!selectedProxy) return;
+  if (!headers) headers = {};
+  setLoading(true);
+  clearResponse();
+  try {
+    var r = await fetch('/api/fetch', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({proxy_hash: selectedProxy.hash, url: url, method: method||'GET', headers: headers, body: body||null})
+    });
+    lastResponse = await r.json();
+    renderResponse(lastResponse);
+    if (lastResponse.url) { document.getElementById('url-input').value = lastResponse.url; updateBkSaveBtn(); }
+  } catch(e) { showErr('Network error: ' + e.message); }
+  setLoading(false);
+}
+
+function toggleHdr() {
+  var a = document.getElementById('hdr-area'), open = a.classList.toggle('open');
+  document.getElementById('hdr-arrow').style.transform = open ? 'rotate(90deg)' : '';
+}
+
+// ── Preview browser ───────────────────────────────────────────────────────────
+function pvPush(url, method, body) {
+  if (pvIdx < pvHistory.length - 1) pvHistory = pvHistory.slice(0, pvIdx + 1);
+  pvHistory.push({url: url, method: method||'GET', body: body||null});
+  pvIdx = pvHistory.length - 1;
+}
+
+async function pvNavigate(url, method, body) {
+  pvPush(url, method, body);
+  document.getElementById('url-input').value = url;
+  updateBkSaveBtn();
+  await doFetch(url, method||'GET', body||null, null);
+}
+
+function pvBack() {
+  if (pvIdx <= 0) return;
+  pvIdx--;
+  var h = pvHistory[pvIdx];
+  document.getElementById('url-input').value = h.url;
+  doFetch(h.url, h.method, h.body, null);
+}
+
+function pvFwd() {
+  if (pvIdx >= pvHistory.length - 1) return;
+  pvIdx++;
+  var h = pvHistory[pvIdx];
+  document.getElementById('url-input').value = h.url;
+  doFetch(h.url, h.method, h.body, null);
+}
+
+function buildPreview(data) {
+  var html = data.body || '';
+  if (data.encoding === 'base64') { try { html = atob(html); } catch(_){} }
+
+  var pageUrl = data.url || document.getElementById('url-input').value;
+
+  // Inject base tag for relative URL resolution
+  var baseTag = '<base href="' + pageUrl + '">';
+  if (html.match(/<head[^>]*>/i)) {
+    html = html.replace(/(<head[^>]*>)/i, '$1' + baseTag);
+  } else {
+    html = baseTag + html;
+  }
+
+  // Build interceptor using concat to keep HTML parser from closing our script tag
+  var sc_open  = ['<', 'script', '>'].join('');
+  var sc_close = ['<', '/', 'script', '>'].join('');
+  var interceptor = sc_open +
+    '(function(){' +
+    'var BASE="' + pageUrl.replace(/"/g,'') + '";' +
+    'function res(h){try{return new URL(h,BASE).href;}catch(e){return h;}}' +
+    'function nav(u,m,b){' +
+      'if(!u||u.indexOf("javascript:")===0)return;' +
+      'if(u.charAt(0)==="#")return;' +
+      'window.parent.postMessage({type:"rproxy-nav",url:u,method:m||"GET",body:b||null},"*");' +
+    '}' +
+    'document.addEventListener("click",function(e){' +
+      'var a=e.target.closest("a[href]");if(!a)return;' +
+      'var h=a.getAttribute("href");' +
+      'if(!h||h.charAt(0)==="#"||h.indexOf("javascript:")===0)return;' +
+      'e.preventDefault();e.stopPropagation();nav(res(h));' +
+    '},true);' +
+    'document.addEventListener("submit",function(e){' +
+      'var f=e.target;' +
+      'var m=(f.method||"GET").toUpperCase();' +
+      'var a=res(f.action||location.href);' +
+      'e.preventDefault();e.stopPropagation();' +
+      'if(m==="GET"){' +
+        'var q=new URLSearchParams(new FormData(f)).toString();' +
+        'nav(a+(a.indexOf("?")>=0?"&":"?")+q);' +
+      '}else{nav(a,m,new URLSearchParams(new FormData(f)).toString());}' +
+    '},true);' +
+    '})();' +
+  sc_close;
+
+  if (html.match(/<body[^>]*>/i)) {
+    html = html.replace(/(<body[^>]*>)/i, '$1' + interceptor);
+  } else {
+    html = interceptor + html;
+  }
+
+  return html;
+}
+
+// ── Response ──────────────────────────────────────────────────────────────────
+function renderResponse(d) {
+  var sb = document.getElementById('res-status');
+  if (d.error && !d.status) { sb.className='res-status serr'; sb.textContent='ERROR'; }
+  else {
+    var cls = d.status>=500?'s5xx':d.status>=400?'s4xx':d.status>=300?'s3xx':'s2xx';
+    sb.className = 'res-status ' + cls;
+    sb.textContent = d.status + ' ' + (d.reason||'');
+  }
+  document.getElementById('res-meta').innerHTML = d.elapsed_ms !== undefined
+    ? '<i class="fa-regular fa-clock"></i> ' + d.elapsed_ms + ' ms' : '';
+
+  var ct = (d.headers && (d.headers['content-type'] || d.headers['Content-Type'])) || '';
+  var isHtml = ct.indexOf('text/html') >= 0 || (d.body||'').trimStart().indexOf('<!') === 0;
+  document.getElementById('tabs').style.display = '';
+  document.getElementById('tab-preview').style.display = isHtml ? '' : 'none';
+  var tab = isHtml ? 'preview' : (currentTab === 'preview' ? 'body' : currentTab);
+  showTab(tab, d);
+}
+
+function showTab(tab, data) {
+  currentTab = tab;
+  data = data || lastResponse;
+  var tabs = ['body','headers','raw','preview'];
+  document.querySelectorAll('.tab').forEach(function(el, i){
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  var body = document.getElementById('res-body');
+  if (body._blobUrl) { URL.revokeObjectURL(body._blobUrl); body._blobUrl = null; }
+  body.style.padding = '14px 18px';
+  if (!data) { body.innerHTML = ''; return; }
+
+  if (tab === 'body') {
+    var h = '';
+    if (data.error && !data.body) {
+      h = '<div class="placeholder" style="height:auto;padding:20px"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger);font-size:28px"></i><p style="color:var(--danger)">' + esc(data.error) + '</p></div>';
+    } else {
+      if (data.truncated) h += '<div class="trunc-warn"><i class="fa-solid fa-triangle-exclamation"></i>Response truncated by proxy max_response_size</div>';
+      var txt = data.body || '';
+      try { txt = JSON.stringify(JSON.parse(txt), null, 2); } catch(_){}
+      h += '<pre>' + esc(txt) + '</pre>';
+    }
+    body.innerHTML = h;
+
+  } else if (tab === 'headers') {
+    var rows = Object.entries(data.headers||{})
+      .sort(function(a,b){ return a[0].localeCompare(b[0]); })
+      .map(function(kv){ return '<tr><td>'+esc(kv[0])+'</td><td>'+esc(String(kv[1]))+'</td></tr>'; })
+      .join('');
+    body.innerHTML = rows
+      ? '<table class="hdr-table"><tbody>' + rows + '</tbody></table>'
+      : '<p style="color:var(--muted)">No headers</p>';
+
+  } else if (tab === 'raw') {
+    body.innerHTML = '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+
+  } else if (tab === 'preview') {
+    body.style.padding = '0';
+    var pageUrl = data.url || document.getElementById('url-input').value;
+    var canBack = pvIdx > 0;
+    var canFwd  = pvIdx < pvHistory.length - 1;
+    var html = buildPreview(data);
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var bUrl = URL.createObjectURL(blob);
+    body._blobUrl = bUrl;
+    body.innerHTML =
+      '<div class="pv-wrap">' +
+        '<div class="pv-toolbar">' +
+          '<button class="btn-icon" title="Back" onclick="pvBack()"' + (canBack?'':' disabled') + '><i class="fa-solid fa-arrow-left"></i></button>' +
+          '<button class="btn-icon" title="Forward" onclick="pvFwd()"' + (canFwd?'':' disabled') + '><i class="fa-solid fa-arrow-right"></i></button>' +
+          '<button class="btn-icon" title="Reload" onclick="sendRequest()"><i class="fa-solid fa-rotate-right"></i></button>' +
+          '<span class="pv-url" title="' + esc(pageUrl) + '">' + esc(pageUrl) + '</span>' +
+          '<button class="btn-icon" title="Copy URL to bar" onclick="loadUrl(\'' + esc(pageUrl).replace(/'/g,'&#39;') + '\')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>' +
+        '</div>' +
+        '<iframe class="pv-frame" src="' + bUrl + '" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>' +
+      '</div>';
+  }
+}
+
+function clearResponse() {
+  lastResponse = null;
+  var body = document.getElementById('res-body');
+  if (body._blobUrl) { URL.revokeObjectURL(body._blobUrl); body._blobUrl = null; }
+  body.style.padding = '14px 18px';
+  body.innerHTML = '';
+  document.getElementById('res-status').textContent = '';
+  document.getElementById('res-meta').textContent = '';
+  document.getElementById('tabs').style.display = 'none';
+}
+
+function showErr(msg) {
+  document.getElementById('res-status').className = 'res-status serr';
+  document.getElementById('res-status').textContent = 'ERROR';
+  document.getElementById('tabs').style.display = '';
+  document.getElementById('res-body').innerHTML =
+    '<div class="placeholder" style="height:auto;padding:30px"><i class="fa-solid fa-circle-exclamation" style="color:var(--danger);font-size:28px"></i><p style="color:var(--danger)">' + esc(msg) + '</p></div>';
+}
+
+function setLoading(on) {
+  document.getElementById('loader').className = 'loader' + (on ? ' on' : '');
+  document.getElementById('send-icon').style.display = on ? 'none' : '';
+  document.getElementById('send-btn').disabled = on || !selectedProxy;
+}
+
+// ── Bookmarks ─────────────────────────────────────────────────────────────────
+async function loadBookmarks() {
+  try {
+    var d = await fetch('/api/bookmarks').then(function(r){ return r.json(); });
+    bkAll = d.bookmarks || [];
+    renderBkChips();
+    renderBkDd();
+    updateBkSaveBtn();
+  } catch(e) { console.error('bookmarks:', e); }
+}
+
+function renderBkChips() {
+  var chips = document.getElementById('bk-chips');
+  var more  = document.getElementById('bk-more');
+  chips.innerHTML = '';
+  var MAX = 6, visible = bkAll.slice(0, MAX), hidden = bkAll.length - MAX;
+  visible.forEach(function(b) {
+    var c = document.createElement('div');
+    c.className = 'bk-chip'; c.title = b.url;
+    c.innerHTML = '<i class="fa-solid fa-globe" style="color:var(--muted);font-size:10px;flex-shrink:0"></i>' +
+      '<span style="overflow:hidden;text-overflow:ellipsis">' + esc(b.title) + '</span>' +
+      '<span class="bk-chip-del" onclick="delBk(event,\'' + b.id + '\')"><i class="fa-solid fa-xmark"></i></span>';
+    c.addEventListener('click', function(e){ if(!e.target.closest('.bk-chip-del')) loadUrl(b.url); });
+    chips.appendChild(c);
+  });
+  more.textContent = '+' + hidden + ' more';
+  more.style.display = hidden > 0 ? '' : 'none';
+}
+
+function renderBkDd() {
+  var dd    = document.getElementById('bk-dd');
+  var empty = document.getElementById('bk-dd-empty');
+  dd.querySelectorAll('.bk-row').forEach(function(el){ el.remove(); });
+  if (!bkAll.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  bkAll.forEach(function(b) {
+    var row = document.createElement('div');
+    row.className = 'bk-row';
+    row.innerHTML =
+      '<i class="fa-solid fa-globe" style="color:var(--muted);flex-shrink:0"></i>' +
+      '<span class="bk-row-title">' + esc(b.title) + '</span>' +
+      '<span class="bk-row-url">' + esc(b.url) + '</span>' +
+      '<div class="bk-row-acts">' +
+        '<button class="btn-icon" title="Rename" onclick="renameBk(event,\'' + b.id + '\',\'' + esc(b.title).replace(/'/g,'&#39;') + '\')"><i class="fa-solid fa-pen"></i></button>' +
+        '<button class="btn-icon" title="Delete" onclick="delBk(event,\'' + b.id + '\')"><i class="fa-solid fa-trash" style="color:var(--danger)"></i></button>' +
+      '</div>';
+    row.addEventListener('click', function(e){
+      if (!e.target.closest('.bk-row-acts')) { loadUrl(b.url); toggleBkDd(false); }
+    });
+    dd.insertBefore(row, empty);
+  });
+}
+
+function updateBkSaveBtn() {
+  var url   = document.getElementById('url-input').value.trim();
+  var saved = bkAll.some(function(b){ return b.url === url; });
+  document.getElementById('bk-save-btn').className = 'bk-save-btn' + (saved ? ' saved' : '');
+  document.getElementById('bk-save-icon').className = saved ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark';
+  document.getElementById('bk-save-label').textContent = saved ? 'Saved' : 'Save';
+}
+
+function loadUrl(url) {
+  document.getElementById('url-input').value = url;
+  updateBkSaveBtn();
+  if (selectedProxy) sendRequest();
+}
+
+function toggleBkDd(force) {
+  var dd = document.getElementById('bk-dd');
+  dd.classList.toggle('open', force !== undefined ? force : !dd.classList.contains('open'));
+}
+
+async function toggleBookmark() {
+  var url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+  var ex = bkAll.find(function(b){ return b.url === url; });
+  if (ex) { await delBk(null, ex.id); return; }
+  var title = url;
+  if (lastResponse && lastResponse.body) {
+    var m = lastResponse.body.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (m) title = m[1].trim().slice(0, 80);
+  }
+  try { if (title === url) title = new URL(url).hostname; } catch(_){}
+  await fetch('/api/bookmarks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url:url, title:title})});
+  await loadBookmarks();
+}
+
+async function delBk(e, id) {
+  if (e) e.stopPropagation();
+  await fetch('/api/bookmarks/' + id, {method:'DELETE'});
+  await loadBookmarks();
+}
+
+async function renameBk(e, id, cur) {
+  e.stopPropagation();
+  var t = prompt('Rename bookmark:', cur);
+  if (!t || t === cur) return;
+  await fetch('/api/bookmarks/' + id, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title:t})});
+  await loadBookmarks();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function timeAgo(iso) {
+  if (!iso) return 'never';
+  var diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (diff < 60)   return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  return Math.floor(diff/3600) + 'h ago';
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
